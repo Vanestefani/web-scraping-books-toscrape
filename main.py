@@ -16,14 +16,14 @@ Pasos practica
     -stock
 3.Generar un archivo CSV
 '''
-URL="https://books.toscrape.com/catalogue/category/books/psychology_26/index.html"
+BASE_URL="https://books.toscrape.com/catalogue/page-{}.html"
 
 # Reaizar peticion para obtener maquetado
-def get_books_content():
+def get_books_content(url):
     headers={
      'User-Agent':'Mozilla/5.0'   
     }
-    response =requests.get(URL,headers=headers)
+    response =requests.get(url,headers=headers)
  
     if  response.status_code==200:
         return response.text
@@ -45,15 +45,6 @@ def get_file ():
     except :
         pass
     return content
-## Obtiene el maquetado
-def get_local_content():
-    content =get_file ()
-    if content:
-        return content
-    content=get_books_content()
-    create_file(content)
-    
-    return content
 
 def create_book(tag):
     
@@ -64,18 +55,41 @@ def create_book(tag):
     print(f'Título: {titulo} | Precio: {precio}| Stock: {stock}\n') 
     return (titulo,precio,stock)
 
+def create_book(tag):
+    
+    
+    titulo = tag.h3.a['title']  
+    precio = tag.find('p', class_='price_color').text
+    stock = tag.find('p', class_='instock').text.strip()
+    return (titulo,precio,stock)
+
+
 def main():
-    content = get_local_content()
-    soup = BeautifulSoup(content, 'html.parser')
-    article_tag = soup.find_all('article', class_='product_pod')
-    libros=[]
-    for tag in article_tag:
-        libro=create_book(tag)
-        libros.append(libro)
+    page_number = 1
+    libros = []
+    while True:
+        url = BASE_URL.format(page_number)
+        print(f"Procesando página {page_number}: {url}")
+        
+        content = get_books_content(url)  # <--- Aquí cambiamos la función
+        if content is None:
+            print("Fin del catálogo o error en la petición.")
+            break
+        
+        soup = BeautifulSoup(content, 'html.parser')
+        article_tag = soup.find_all('article', class_='product_pod')
+        if not article_tag:
+            break
+        
+        for tag in article_tag:
+            libro = create_book(tag)
+            libros.append(libro)
+        
+        page_number += 1
     with open('libros.csv','w', encoding='utf-8', newline='') as file:
         writes=csv.writer(file)
         for libro in libros :
-            writes.writerow(libro)
+                writes.writerow(libro)
  
 # Este bloque evalúa si el script se está ejecutando directamente (no importado como módulo).
 if __name__ == '__main__' :  
